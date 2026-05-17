@@ -17,7 +17,7 @@ Transformar las transacciones existentes de cafeterías escolares en:
 
 Todo el sistema fue diseñado completamente sobre infraestructura serverless en AWS.
 
-# 🏗️ Arquitectura General
+# Arquitectura General
 
 ```text
 WhatsApp (Twilio Sandbox)
@@ -33,7 +33,7 @@ AWS Lambda (Node.js 22 + Express)
  └── Twilio API
 ```
 
-# ⚙️ Tecnologías utilizadas
+# Tecnologías utilizadas
 
 | Componente | Tecnología |
 |---|---|
@@ -48,7 +48,7 @@ AWS Lambda (Node.js 22 + Express)
 | Secrets | AWS SSM Parameter Store |
 | Automatizaciones | EventBridge / Lambdas programadas |
 
-# 📦 Funcionalidades implementadas
+# Funcionalidades implementadas
 
 ## 1. Chatbot conversacional para padres
 
