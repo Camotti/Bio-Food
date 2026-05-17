@@ -1,267 +1,190 @@
-Hackathon Caribe Tech
-Descripción General
-Este proyecto consiste en una plataforma serverless desarrollada durante la Hackathon Caribe Tech, enfocada en automatizar procesos escolares y alimentarios mediante inteligencia artificial y WhatsApp.
+# BioAlert
 
-La solución permite:
+MVP serverless desarrollado para la Hackathon Caribe Tech 2026 sobre la plataforma Biofood.
 
-Atención automatizada para profesores vía WhatsApp.
-Conversión de lenguaje natural a consultas SQL usando IA.
-Generación automática de respuestas estructuradas.
-Alertas automáticas por alergias alimentarias.
-Reportes programados automáticos.
-Persistencia temporal de conversaciones.
-Arquitectura completamente serverless en AWS.
-Tecnologías Utilizadas
-Cloud & Backend
-Amazon Web Services
-AWS Lambda
-Amazon API Gateway
-Amazon DynamoDB
-AWS Systems Manager Parameter Store
-Amazon RDS Proxy
-Desarrollo
-Node.js
-Express
-Inteligencia Artificial & Mensajería
-Twilio
-WhatsApp Sandbox
-Modelo IA Llama 3.3 8B
-Arquitectura del Sistema
-Usuario WhatsApp
+BioAlert agrega capacidades conversacionales y automatizaciones inteligentes vía WhatsApp utilizando AWS Lambda, Twilio Sandbox y modelos LLM en AWS.
+
+# Objetivo
+
+Transformar las transacciones existentes de cafeterías escolares en:
+
+- respuestas conversacionales,
+- alertas automáticas,
+- detección de alérgenos,
+- alertas de ausencia de consumo,
+- alertas de stock crítico,
+- y proyecciones simples de saldo.
+
+Todo el sistema fue diseñado completamente sobre infraestructura serverless en AWS.
+
+# 🏗️ Arquitectura General
+
+```text
+WhatsApp (Twilio Sandbox)
         ↓
-Twilio Sandbox
+API Gateway (AWS)
         ↓
-API Gateway
+AWS Lambda (Node.js 22 + Express)
         ↓
-Lambda Principal
-   ├── Procesamiento IA
-   ├── Generación SQL
-   ├── Consultas SQL
-   ├── Validación de alergias
-   ├── DynamoDB Historial
-   └── Respuesta WhatsApp
-Estructura del Proyecto
-project/
-│
-├── lambdas/
-│   ├── main-chatbot/
-│   ├── inventory-reports/
-│   └── inactivity-reports/
-│
-├── layers/
-│   └── shared-dependencies/
-│
-├── routes/
-├── services/
-├── utils/
-├── config/
-│
-├── package.json
-└── README.md
-Funcionalidades Principales
-1. Chatbot Inteligente para Profesores
+ ├── PostgreSQL (Biofood DB)
+ ├── DynamoDB (historial y sesiones)
+ ├── AWS Bedrock / LLM
+ ├── AWS Systems Manager (SSM)
+ └── Twilio API
+```
 
-La Lambda principal se encargó de:
+# ⚙️ Tecnologías utilizadas
 
-Recibir mensajes desde WhatsApp.
-Interpretar lenguaje natural.
-Convertir preguntas a SQL mediante IA.
-Ejecutar consultas.
-Reformatear respuestas para WhatsApp.
-Guardar historial conversacional.
-Flujo de IA
-Paso 1 — Lenguaje Natural → SQL
+| Componente | Tecnología |
+|---|---|
+| Runtime | Node.js 22 |
+| Framework | Express |
+| Infraestructura | AWS Lambda |
+| API pública | API Gateway |
+| Base de datos principal | PostgreSQL |
+| Historial conversacional | DynamoDB |
+| Canal WhatsApp | Twilio Sandbox |
+| IA conversacional | AWS Bedrock (Llama 3.3 8B) |
+| Secrets | AWS SSM Parameter Store |
+| Automatizaciones | EventBridge / Lambdas programadas |
 
-Ejemplo:
+# 📦 Funcionalidades implementadas
 
-SELECT * FROM students
-WHERE classroom = '10A';
-Paso 2 — SQL → Respuesta Natural
+## 1. Chatbot conversacional para padres
 
-La IA toma los resultados SQL y genera respuestas legibles para WhatsApp.
+Los padres pueden consultar información del estudiante usando lenguaje natural vía WhatsApp.
 
-Ejemplo:
+### Ejemplos
 
-Los estudiantes del salón 10A son:
-- Juan Pérez
-- Laura Gómez
-- Carlos Ruiz
-2. Historial Conversacional
+- “¿Qué comió mi hijo hoy?”
+- “¿Cuándo se le acaba el saldo?”
+- “¿Cuánto ha gastado esta semana?”
 
-Se utilizó:
+### Flujo
 
-Amazon DynamoDB
+1. Twilio recibe mensaje WhatsApp.
+2. API Gateway redirige al webhook Lambda.
+3. El mensaje se convierte a SQL mediante IA.
+4. PostgreSQL ejecuta la consulta.
+5. La respuesta se vuelve a estructurar usando IA.
+6. Se responde al usuario vía Twilio.
 
-Para almacenar:
+## 2. Historial conversacional
 
-Conversaciones.
-Contexto temporal.
-Flujo del usuario.
-Reinicio Automático
+Se utilizó DynamoDB para:
 
-El historial se eliminaba automáticamente cada hora para:
+- guardar historial de conversaciones,
+- mantener contexto conversacional,
+- manejar flujo de interacción.
 
-Optimizar costos.
-Evitar almacenamiento innecesario.
-Mantener conversaciones recientes.
-3. Sistema de Alertas Alérgicas
-Problema Inicial
+La información tenía TTL automático y se reiniciaba periódicamente para mantener el MVP liviano.
 
-El requerimiento inicial proponía consultar la base de datos cada 30 segundos para detectar nuevas compras.
+## 3. Alertas de alérgenos en tiempo real
 
-Esto generaba:
+Se implementó un endpoint especializado para recibir eventos de nuevas transacciones.
 
-Alto consumo de recursos.
-Arquitectura poco eficiente.
-Consultas constantes innecesarias.
-Solución Implementada
+Cuando una compra contenía un alérgeno registrado para el estudiante:
 
-Se creó un endpoint dentro de la Lambda principal que funcionaba como receptor de eventos.
+- se detectaba inmediatamente,
+- y se notificaba automáticamente al padre vía WhatsApp.
 
-Flujo
-Nueva Transacción
-        ↓
-Endpoint Receptor
-        ↓
-Validación de alergias
-        ↓
-Notificación automática al padre
-Beneficios
-Arquitectura orientada a eventos.
-Menor consumo computacional.
-Mayor velocidad de respuesta.
-Escalabilidad mejorada.
-4. Lambdas Programadas
+Esto reemplazó la idea inicial de hacer polling constante sobre la base de datos, reduciendo complejidad y consumo innecesario.
 
-Se desarrollaron dos Lambdas adicionales utilizando triggers programados.
+## 4. Alertas automáticas programadas
 
-Lambda de Inventario
-Ejecución
+### Ausencia de consumo
 
-Cada 7 horas.
+Ejecutada diariamente después del mediodía.
 
-Función
-Validar inventario de kioscos.
-Detectar productos bajo mínimo.
-Enviar alertas automáticas.
-Lambda de Inactividad Alimentaria
-Ejecución
+Detecta estudiantes que no registraron compras y notifica al padre.
 
-Cada 12 horas.
+### Stock crítico
 
-Función
-Revisar estudiantes sin compras después de las 12 PM.
-Notificar automáticamente a padres.
-Seguridad y Gestión de Credenciales
+Ejecutada diariamente temprano en la mañana.
 
-Se utilizó:
+Detecta productos por debajo del stock mínimo y notifica administradores de cafetería.
 
-AWS Systems Manager Parameter Store
+# Sobre este repositorio
 
-Para almacenar:
+Este repositorio contiene principalmente:
 
-Credenciales SQL.
-Tokens Twilio.
-Variables de entorno.
-Configuración sensible.
-Conexión SQL Optimizada
+- código fuente de las AWS Lambda,
+- lógica conversacional,
+- automatizaciones,
+- integración con Twilio,
+- y documentación técnica del MVP.
 
-La conexión a la base de datos se realizó mediante:
+Debido a que toda la infraestructura fue desplegada directamente en AWS:
 
-Amazon RDS Proxy
-Beneficios
-Pool de conexiones.
-Menor latencia.
-Mayor estabilidad.
-Mejor rendimiento serverless.
-Lambda Layers
+- no es posible ejecutar el proyecto completamente de forma local,
+- ni desplegarlo únicamente con este repositorio.
 
-Se creó una Layer compartida para centralizar dependencias.
+Para funcionamiento completo se requerían:
 
-Dependencias Incluidas
-PostgreSQL Client
-Librerías SQL
-SDK AWS
-Dependencias IA
-Twilio SDK
-Beneficios
-Reutilización entre Lambdas.
-Despliegues más ligeros.
-Mejor mantenimiento.
-Variables de Entorno
+- recursos AWS activos,
+- configuración de API Gateway,
+- credenciales en SSM,
+- Twilio Sandbox,
+- DynamoDB,
+- PostgreSQL,
+- y permisos IAM específicos.
 
-Ejemplo:
+Aun así, se entrega el código completo de las Lambdas y la estructura lógica utilizada durante la hackathon para fines académicos y de evaluación.
 
-DB_HOST=
-DB_USER=
-DB_PASSWORD=
-DB_NAME=
+# Variables y servicios externos
 
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
+Las Lambdas consumían secrets desde AWS Systems Manager (SSM):
 
-OPENAI_API_KEY=
-Endpoints Principales
-Webhook WhatsApp
-POST /webhook/whatsapp
+- credenciales PostgreSQL,
+- tokens Twilio,
+- configuración Bedrock,
+- variables de entorno,
+- endpoints.
 
-Recibe mensajes desde Twilio.
+# Decisiones técnicas importantes
 
-Endpoint de Alertas
-POST /alerts/allergy
+- Arquitectura 100% serverless.
+- Sin frontend web.
+- Sin microservicios.
+- Sin autenticación tradicional.
+- WhatsApp funciona como identidad del usuario.
+- SQL crudo para velocidad y simplicidad.
+- DynamoDB usado únicamente para contexto conversacional.
+- Lambdas separadas por responsabilidad.
+- Infraestructura optimizada para demo funcional en hackathon.
 
-Recibe nuevas transacciones para validar alergias.
+# Alcance del MVP
 
-Despliegue
-Requisitos
-Node.js 22
-AWS CLI
-Cuenta AWS
-Cuenta Twilio Sandbox
-Instalación
-npm install
-Deploy
-serverless deploy
+## Incluye
 
-o utilizando AWS SAM/CDK según configuración.
+- chatbot conversacional,
+- alertas automáticas,
+- detección de alérgenos,
+- proyección de saldo,
+- alertas de stock.
 
-Principales Retos Técnicos
-Conversión IA → SQL
+## No incluye
 
-Interpretar correctamente lenguaje natural y transformarlo en SQL válido.
+- frontend web,
+- dashboards,
+- multi-tenant,
+- autenticación compleja,
+- modelos ML entrenados personalizados.
 
-Persistencia Temporal
+# Contexto Biofood
 
-Mantener contexto conversacional eficiente usando DynamoDB.
+Biofood es una plataforma de gestión de cafeterías escolares que ya incluye funcionalidades relacionadas con:
 
-Optimización de Eventos
+- control nutricional,
+- inventarios,
+- control de consumo,
+- recargas,
+- y asistentes virtuales para padres.
 
-Reemplazar polling constante por arquitectura basada en eventos.
+BioAlert fue desarrollado como una extensión experimental orientada a automatización conversacional e inteligencia operativa sobre la infraestructura existente.
 
-Escalabilidad
+# Estado del proyecto
 
-Diseñar toda la solución bajo arquitectura serverless.
+Proyecto desarrollado como MVP funcional para Hackathon Caribe Tech 2026.
 
-Resultado Final
-
-La plataforma logró:
-
-Automatizar consultas escolares.
-Gestionar respuestas inteligentes vía WhatsApp.
-Detectar alertas alimentarias críticas.
-Generar reportes automáticos.
-Reducir costos operativos.
-Implementar una arquitectura cloud moderna y escalable.
-Autor
-
-Proyecto desarrollado para Hackathon Caribe Tech.
-
-Desarrollado utilizando:
-
-AWS
-Node.js
-Express
-Twilio
-DynamoDB
-IA Generativa
-Arquitectura Serverless
+Diseñado para demostración técnica y validación rápida de producto.
